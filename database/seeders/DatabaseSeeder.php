@@ -18,6 +18,12 @@ class DatabaseSeeder extends Seeder
             'email' => 'test@example.com',
         ]);
 
-        User::factory(count: 2)->create();
+        User::factory(count: 15)->create();
+
+        $this->call([
+            PostSeeder::class,
+
+        ]);
+
     }
 }
