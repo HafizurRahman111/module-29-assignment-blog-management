@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
     public function index()
     {
+        //  dd(Auth::user());
         return Inertia::render('app/dashboard/Index');
     }
 
@@ -21,8 +23,12 @@ class DashboardController extends Controller
     // Profile page
     public function profile()
     {
-        // Logic to fetch user profile data
-        return view('dashboard.profile');
+        // dd(auth()->user());
+        $user = Auth::User();
+
+        return Inertia::render('app/dashboard/Profile', [
+            'user' => $user
+        ]);
     }
 
     // Edit profile page

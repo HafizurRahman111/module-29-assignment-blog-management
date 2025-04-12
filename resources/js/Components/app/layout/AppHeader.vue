@@ -28,11 +28,14 @@
         <!-- Right: Auth Links -->
         <div class="d-flex gap-3">
           <template v-if="$page.props.auth?.user">
-            <Link href="/dashboard" class="nav-link text-dark hover-link">
-            Dashboard
+            <Link href="/dashboard" class="nav-link text-dark hover-link" aria-label="Dashboard">
+            <i class="bi bi-speedometer2 me-2"></i>
+            <span class="link-text">Dashboard</span>
             </Link>
-            <Link as="button" method="post" href="/logout" class="nav-link text-dark hover-link">
-            Logout
+            <Link as="button" method="post" href="/logout" class="nav-link text-dark hover-link logout-button"
+              aria-label="Logout">
+            <i class="bi bi-box-arrow-right"></i>
+            <span class="link-text">Logout</span>
             </Link>
           </template>
           <template v-else>
@@ -52,12 +55,11 @@
 <script setup>
 import { Link } from '@inertiajs/vue3';
 
-// Function to check if the current route is active
 const isActive = (route) => {
   return window.location.pathname === route;
 };
 
-const hoverLinkClass = 'hover-link'; // Class for the hover effect
+const hoverLinkClass = 'hover-link'; 
 </script>
 
 <style scoped>
@@ -70,7 +72,6 @@ const hoverLinkClass = 'hover-link'; // Class for the hover effect
   text-decoration: underline;
 }
 
-/* Increased specificity for active link */
 .nav-link.active-link {
   font-weight: bold;
   color: #4f46e5 !important;

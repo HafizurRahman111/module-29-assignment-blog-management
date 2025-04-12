@@ -22,4 +22,25 @@ class Post extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function tags()
+    {
+        return $this->belongsToMany(Tag::class, 'post_tags')->withTimestamps();
+    }
+
+    public function comments()
+    {
+        return $this->hasMany(Comment::class)->latest();
+    }
+
+    public function likes()
+    {
+        return $this->hasMany(Like::class);
+    }
+
+    public function bookmarks()
+    {
+        return $this->hasMany(Bookmark::class);
+    }
+
 }

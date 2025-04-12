@@ -1,37 +1,125 @@
 <template>
-    <div class="data-table-header card-header bg-white border-0 py-3">
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-            <div class="d-flex align-items-center gap-3">
-                <h5 class="mb-0 fw-semibold">
-                    <i v-if="icon" :class="icon" class="me-2 text-muted"></i>
+    <header class="data-table-header card-header bg-white border-0 py-3">
+        <div class="header-content">
+            <!-- Left Section -->
+            <div class="header-left">
+                <h1 class="header-title">
+                    <i v-if="icon" :class="icon" class="header-icon"></i>
                     {{ title }}
-                </h5>
+                </h1>
                 <slot name="header-left"></slot>
             </div>
 
-            <div class="d-flex align-items-center gap-3">
-                <DataTableSearch v-if="searchable" :placeholder="searchPlaceholder" @search="$emit('search', $event)"
-                    class="me-2" />
+            <!-- Right Section -->
+            <div class="header-right">
+                <DataTableSearch v-if="searchable" :placeholder="searchPlaceholder" @search="handleSearch"
+                    class="header-search" />
 
-                <AddButton v-if="addRoute" :to="addRoute" size="sm" />
+                <AddButton v-if="showAddButton" :to="addRoute" size="sm" :text="addButtonText" />
 
                 <slot name="header-right"></slot>
             </div>
         </div>
-    </div>
+    </header>
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import DataTableSearch from './DataTableSearch.vue';
 import AddButton from './actions/AddButton.vue';
 
-defineProps({
-    title: { type: String, required: true },
-    icon: { type: String, default: '' },
-    searchable: { type: Boolean, default: true },
-    searchPlaceholder: { type: String, default: 'Search...' },
-    addRoute: { type: String, default: '' }
+const props = defineProps({
+    title: {
+        type: String,
+        required: true
+    },
+    icon: {
+        type: String,
+        default: ''
+    },
+    searchable: {
+        type: Boolean,
+        default: true
+    },
+    searchPlaceholder: {
+        type: String,
+        default: 'Search...'
+    },
+    addRoute: {
+        type: [String, Boolean],
+        default: false
+    },
+    addButtonText: {
+        type: String,
+        default: 'Add New'
+    }
 });
 
-defineEmits(['search']);
+const emit = defineEmits(['search']);
+
+const showAddButton = computed(() => {
+    return props.addRoute && typeof props.addRoute === 'string';
+});
+
+const handleSearch = (query) => {
+    emit('search', query);
+};
 </script>
+
+<style scoped>
+.data-table-header {
+    position: relative;
+    z-index: 10;
+}
+
+.header-content {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.header-left,
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.header-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+
+.header-icon {
+    margin-right: 0.5rem;
+    color: var(--text-muted);
+    font-size: 1.1em;
+}
+
+.header-search {
+    min-width: 200px;
+    margin-right: 0.5rem;
+}
+
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .header-right {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .header-search {
+        flex-grow: 1;
+        min-width: unset;
+    }
+}
+</style>

@@ -1,10 +1,10 @@
 <template>
   <DashboardLayout title="User Management">
     <div class="user-management-container">
-      <DataTable title="User List" icon="fas fa-users" :items="users" :headers="headers" :searchable="true"
-        :loading="loading" :delete-action="askDelete" search-placeholder="Search ..."
-        :search-fields="['username', 'email']" @search="handleSearch">
-        <!-- Profile Picture Slot -->
+      <DataTable title="User List" icon="fas fa-users" :items="filteredUsers" :headers="headers" :searchable="true"
+        :loading="loading" :delete-action="askDelete" :search-fields="['username', 'email']"
+        search-placeholder="Search ..." @search="handleSearch">
+        <!-- Profile Picture -->
         <template #item-profile_pic="{ profile_pic }">
           <div class="profile-picture-container">
             <img v-if="profile_pic" :src="profile_pic" alt="User profile" class="profile-picture" loading="lazy" />
@@ -14,12 +14,14 @@
           </div>
         </template>
 
-        <!-- Custom Empty State -->
+        <!-- Empty State -->
         <template #empty-state>
           <div class="empty-state-content">
             <i class="fas fa-users-slash empty-state-icon"></i>
             <h5 class="empty-state-title">No users found</h5>
-            <p v-if="searchQuery" class="empty-state-hint">Try a different search term</p>
+            <p v-if="searchQuery" class="empty-state-hint">
+              Try a different search term
+            </p>
             <router-link v-if="canCreateUsers" to="/users/create" class="btn btn-primary empty-state-button">
               <i class="fas fa-plus me-2"></i>Create New User
             </router-link>
@@ -29,8 +31,7 @@
 
       <!-- Delete Confirmation Modal -->
       <ConfirmDeleteModal :visible="showDeleteModal" :username="selectedUser?.username || 'Unknown'"
-        :userId="selectedUser?.id || 'N/A'" @confirm="confirmDelete" @cancel="showDeleteModal = false" />
-
+        :user-id="selectedUser?.id ?? 'N/A'" @confirm="confirmDelete" @cancel="showDeleteModal = false" />
     </div>
   </DashboardLayout>
 </template>
@@ -41,33 +42,24 @@ import { usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import { createToaster } from '@meforma/vue-toaster';
 
-// Components
 import DashboardLayout from '@/Layouts/DashboardLayout.vue';
 import DataTable from '@/Components/ui/data/DataTable/DataTable.vue';
 import ConfirmDeleteModal from '@/Components/ui/modals/ConfirmDeleteModal.vue';
 
-// Toaster config
-const toaster = createToaster({
-  position: 'top-right',
-  duration: 3000,
-  maxToasts: 3
-});
+// Toast setup
+const toaster = createToaster({ position: 'top-right', duration: 3000 });
 
-// Initial props from server
-const { props: pageProps } = usePage();
-const users = ref(pageProps.users || []);
+const { props } = usePage();
+const users = ref([...props.users ?? []]); 
 const searchQuery = ref('');
 const loading = ref(false);
 const error = ref(null);
 
-// Modal + selected user
-const showDeleteModal = ref(false);
 const selectedUser = ref(null);
+const showDeleteModal = ref(false);
 
-// Permissions
-const canCreateUsers = computed(() => true);
+const canCreateUsers = computed(() => true); 
 
-// Table headers
 const headers = [
   { text: 'Username', value: 'username', sortable: true, searchable: true },
   { text: 'Email', value: 'email', sortable: true, searchable: true },
@@ -87,19 +79,25 @@ const headers = [
   }
 ];
 
-// Handle search input
 const handleSearch = (query) => {
   searchQuery.value = query;
 };
 
-// Trigger delete modal
+// Optional search filter (fallback if DataTable doesn't filter client-side)
+const filteredUsers = computed(() => {
+  if (!searchQuery.value) return users.value;
+  const query = searchQuery.value.toLowerCase();
+  return users.value.filter(user =>
+    user.username?.toLowerCase().includes(query) ||
+    user.email?.toLowerCase().includes(query)
+  );
+});
+
 const askDelete = (user) => {
-  console.log('Deleting user:', user);
   selectedUser.value = user;
   showDeleteModal.value = true;
 };
 
-// Delete confirmed
 const confirmDelete = async () => {
   if (!selectedUser.value) return;
 
@@ -107,11 +105,10 @@ const confirmDelete = async () => {
   loading.value = true;
 
   try {
-    await axios.delete(`/api/users/${selectedUser.value.id}`);
+    await axios.delete(`/users/${selectedUser.value.id}`);
     users.value = users.value.filter(u => u.id !== selectedUser.value.id);
     toaster.success('User deleted successfully');
   } catch (err) {
-    console.error('Delete error:', err);
     error.value = err;
     toaster.error(err.response?.data?.message || 'Failed to delete user');
   } finally {
@@ -120,16 +117,14 @@ const confirmDelete = async () => {
   }
 };
 
-// Optional: refetch if page initially empty
 const fetchUsers = async () => {
   if (users.value.length > 0) return;
 
+  loading.value = true;
   try {
-    loading.value = true;
-    const response = await axios.get('/users');
-    users.value = response.data;
+    const { data } = await axios.get('/users');
+    users.value = data;
   } catch (err) {
-    console.error('Fetch error:', err);
     error.value = err;
     toaster.error('Failed to load users');
   } finally {
@@ -141,6 +136,10 @@ onMounted(fetchUsers);
 </script>
 
 <style scoped>
+.user-management-container {
+  padding: 0.5rem;
+}
+
 .profile-picture-container {
   display: flex;
   justify-content: center;

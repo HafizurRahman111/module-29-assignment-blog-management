@@ -1,9 +1,9 @@
 <template>
     <div class="col-md-6 col-lg-3">
         <div :class="['card border-0 shadow-lg text-white', 'bg-' + color]" @mouseover="onHover" @mouseleave="onLeave">
-            <div class="card-body d-flex align-items-center">
+            <div class="card-body d-flex justify-content-between align-items-center">
                 <i :class="['bi', 'bi-' + icon, 'fs-2', 'me-3']"></i>
-                <div>
+                <div class="d-flex flex-column ms-3 text-end"> 
                     <div class="fs-4 fw-semibold">{{ count }}</div>
                     <div class="small">{{ title }}</div>
                 </div>
@@ -40,7 +40,6 @@ const onLeave = (event) => {
     cursor: pointer;
 }
 
-
 .card-body {
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
@@ -54,7 +53,6 @@ const onLeave = (event) => {
     transition: transform 0.3s ease;
 }
 
-/* Hover effects for the icon */
 .card-body:hover i {
     transform: scale(1.1);
 }

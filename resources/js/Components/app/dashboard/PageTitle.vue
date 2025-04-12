@@ -49,7 +49,7 @@ defineProps({
 }
 
 .page-title-container h1 {
-    font-size: 1.5rem;
+    font-size: 1.2rem;
     font-weight: bold;
     color: #4f46e5;
     margin: 0;

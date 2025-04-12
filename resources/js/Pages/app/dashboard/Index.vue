@@ -29,7 +29,7 @@ const stats = [
 
 <style scoped>
 .dashboard-index {
-    padding: 1rem;
+    padding: .5rem;
     background-color: #f4f6f9;
     transition: all 0.3s ease-in-out;
 }
@@ -42,12 +42,10 @@ h1 {
     transition: font-size 0.3s ease;
 }
 
-/* Card container animation */
 .animated-card {
     animation: fadeIn 0.5s ease-out;
 }
 
-/* FadeIn animation */
 @keyframes fadeIn {
     0% {
         opacity: 0;
@@ -60,23 +58,20 @@ h1 {
     }
 }
 
-/* Flexbox Layout: 4 cards per row */
 .row {
     display: flex;
     flex-wrap: wrap;
-    gap: 1rem;
+    gap: 1.5rem 0;
     justify-content: flex-start;
 }
 
-/* Card layout */
 .dashboard-card {
-    flex: 1 0 calc(25% - 1rem);
-    max-width: calc(25% - 1rem);
+    flex: 1 0 calc(25% - .5rem);
+    max-width: calc(25% - .5rem);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     box-sizing: border-box;
 }
 
-/* Hover effect */
 .dashboard-card:hover {
     transform: translateY(-10px);
     /* box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1); */

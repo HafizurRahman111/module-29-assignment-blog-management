@@ -1,19 +1,40 @@
 <template>
     <div class="data-table-container">
-        <!-- Header -->
+        <!-- Header with flexible creation options -->
         <DataTableHeader :title="title" :icon="icon" :searchable="searchable" :search-placeholder="searchPlaceholder"
-            :add-route="addRoute" :add-button-text="addButtonText" @search="handleSearch">
+            @search="handleSearch">
             <template #header-left>
                 <slot name="header-left" />
             </template>
+
             <template #header-right>
+                <!-- Conditional Add Button -->
+                <template v-if="hasCreationOption">
+                    <button v-if="addRoute" class="btn btn-primary" @click="navigateToAdd">
+                        <i class="fas fa-plus me-2"></i>
+                        {{ addButtonText }}
+                    </button>
+
+                    <button v-else-if="showAddModal" class="btn btn-success" @click="openAddModal">
+                        <i class="fas fa-plus me-2"></i>
+                        {{ addButtonText }}
+                    </button>
+                </template>
+
                 <slot name="header-right" />
             </template>
         </DataTableHeader>
 
-        <!-- Table Wrapper -->
+        <!-- Add Modal Slot -->
+        <slot name="add-modal" v-if="showAddModal && isAddModalOpen">
+            <Modal :show="isAddModalOpen" @close="closeAddModal">
+                <slot name="modal-content"></slot>
+            </Modal>
+        </slot>
+
+        <!-- Table Content -->
         <div class="table-wrapper">
-            <!-- Loading -->
+            <!-- Loading State -->
             <Transition name="fade">
                 <div v-if="loading" class="loading-overlay">
                     <div class="spinner-border text-primary" role="status">
@@ -28,6 +49,20 @@
                     <i class="fas fa-database empty-icon"></i>
                     <h5>No data available</h5>
                     <p v-if="searchQuery">Try adjusting your search query</p>
+
+                    <!-- Empty State Action -->
+                    <template v-if="hasCreationOption">
+                        <button v-if="addRoute" class="btn btn-primary mt-3" @click="navigateToAdd">
+                            <i class="fas fa-plus me-2"></i>
+                            {{ addButtonText }}
+                        </button>
+
+                        <button v-else-if="showAddModal" class="btn btn-primary mt-3" @click="openAddModal">
+                            <i class="fas fa-plus me-2"></i>
+                            {{ addButtonText }}
+                        </button>
+                    </template>
+
                     <slot name="empty-state" />
                 </div>
             </Transition>
@@ -57,11 +92,13 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import { debounce } from 'lodash-es';
 import DataTableHeader from './DataTableHeader.vue';
 import ViewButton from './actions/ViewButton.vue';
 import EditButton from './actions/EditButton.vue';
 import DeleteButton from './actions/DeleteButton.vue';
+import Modal from '@/Components/ui/modals/Modal.vue';
 
 const props = defineProps({
     title: String,
@@ -71,8 +108,9 @@ const props = defineProps({
     searchable: { type: Boolean, default: true },
     searchFields: { type: Array, default: () => ['name'] },
     searchPlaceholder: { type: String, default: 'Search...' },
-    addRoute: { type: String, default: '' },
+    addRoute: { type: [String, Boolean], default: false },
     addButtonText: { type: String, default: 'Add New' },
+    showAddModal: { type: Boolean, default: false },
     viewRoute: Function,
     editRoute: Function,
     deleteAction: Function,
@@ -82,19 +120,22 @@ const props = defineProps({
     debounceDelay: { type: Number, default: 300 }
 });
 
-const emit = defineEmits(['delete', 'search']);
+const emit = defineEmits([
+    'delete',
+    'search',
+    'add-modal-open',
+    'add-modal-close'
+]);
 
-// Reactive State
+const router = useRouter();
 const searchQuery = ref('');
 const sortKey = ref('');
 const sortOrder = ref('asc');
+const isAddModalOpen = ref(false);
 
-// Debounced Search
-const debouncedSearch = debounce((query) => emit('search', query), props.debounceDelay);
+// Computed properties
+const hasCreationOption = computed(() => props.addRoute || props.showAddModal);
 
-watch(searchQuery, () => debouncedSearch(searchQuery.value));
-
-// Computed Headers with Sort Handler
 const processedHeaders = computed(() =>
     props.headers.map(header => ({
         ...header,
@@ -103,10 +144,10 @@ const processedHeaders = computed(() =>
     }))
 );
 
-// Filtered Items (Search + Sort)
 const filteredItems = computed(() => {
     let result = [...props.items];
 
+    // Apply search filter
     if (searchQuery.value) {
         const query = searchQuery.value.toLowerCase();
         result = result.filter(item =>
@@ -116,6 +157,7 @@ const filteredItems = computed(() => {
         );
     }
 
+    // Apply sorting
     if (sortKey.value) {
         result.sort((a, b) => {
             const valA = a[sortKey.value];
@@ -137,7 +179,12 @@ const filteredItems = computed(() => {
     return result;
 });
 
-// Event Handlers
+
+// Methods
+const debouncedSearch = debounce((query) => {
+    emit('search', query);
+}, props.debounceDelay);
+
 const handleSearch = (query) => {
     searchQuery.value = query;
 };
@@ -148,8 +195,6 @@ const handleSort = (key) => {
         : (sortKey.value = key, sortOrder.value = 'asc');
 };
 
-
-
 const handleDelete = (id) => {
     if (typeof props.deleteAction === 'function') {
         props.deleteAction(id);
@@ -157,15 +202,34 @@ const handleDelete = (id) => {
     emit('delete', id);
 };
 
+const navigateToAdd = () => {
+    if (typeof props.addRoute === 'string') {
+        router.push(props.addRoute);
+    }
+};
+
+const openAddModal = () => {
+    isAddModalOpen.value = true;
+    emit('add-modal-open');
+};
+
+const closeAddModal = () => {
+    isAddModalOpen.value = false;
+    emit('add-modal-close');
+};
+
+// Watchers
+watch(searchQuery, () => debouncedSearch(searchQuery.value));
 </script>
 
 <style scoped>
 .data-table-container {
-    background: #ffffff;
-    border-radius: 0.75rem;
-    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+    position: relative;
+    background: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     overflow: hidden;
-    padding: .5rem;
+    padding: 1rem;
 }
 
 .table-wrapper {
@@ -173,18 +237,6 @@ const handleDelete = (id) => {
     min-height: 200px;
 }
 
-/* Animations */
-.fade-enter-active,
-.fade-leave-active {
-    transition: opacity 0.2s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-    opacity: 0;
-}
-
-/* Loading State */
 .loading-overlay {
     position: absolute;
     top: 0;
@@ -196,85 +248,62 @@ const handleDelete = (id) => {
     align-items: center;
     justify-content: center;
     z-index: 10;
-    backdrop-filter: blur(2px);
 }
 
-/* Empty State */
 .empty-state {
-    padding: 40px 20px;
+    padding: 3rem;
     text-align: center;
-    color: #64748b;
+    color: #6b7280;
 }
 
 .empty-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
-    color: #e2e8f0;
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
 }
 
-.empty-state h5 {
-    margin-bottom: 8px;
-    color: #475569;
-}
-
-.empty-state p {
-    margin-bottom: 0;
-}
-
-/* Action Buttons */
 .action-buttons {
     display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
 }
 
 .action-btn {
-    transition: all 0.2s ease;
+    padding: 0.25rem 0.5rem;
 }
 
-.action-btn:hover {
-    transform: translateY(-1px);
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.3s ease;
 }
 
-/* Modern Data Table Styles */
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+}
+
 .modern-data-table {
-    --easy-table-border: none;
-    --easy-table-header-font-size: 0.8125rem;
-    --easy-table-header-background: #f8fafc;
-    --easy-table-header-font-color: #64748b;
-    --easy-table-header-height: 56px;
-    --easy-table-row-border: 1px solid #f1f5f9;
-    --easy-table-row-font-size: 0.875rem;
-    --easy-table-row-font-color: #334155;
-    --easy-table-row-height: 60px;
-    --easy-table-row-hover-background: rgba(79, 70, 229, 0.04);
+    --easy-table-header-font-size: 0.875rem;
+    --easy-table-header-background-color: #f9fafb;
+    --easy-table-row-border: 1px solid #f3f4f6;
 }
 
-.modern-data-table th {
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-bottom: 2px solid #e2e8f0 !important;
+.btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.3rem 1rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    transition: all 0.2s;
 }
 
-.modern-data-table td {
-    vertical-align: middle;
-    border-bottom: 1px solid #f1f5f9 !important;
+.btn-primary {
+    background-color: #3b82f6;
+    color: white;
+    border: none;
 }
 
-.modern-data-table tr:hover td {
-    background: var(--easy-table-row-hover-background);
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .data-table-container {
-        border-radius: 0.5rem;
-    }
-
-    .action-buttons {
-        flex-direction: column;
-        gap: 4px;
-    }
+.btn-primary:hover {
+    background-color: #2563eb;
 }
 </style>

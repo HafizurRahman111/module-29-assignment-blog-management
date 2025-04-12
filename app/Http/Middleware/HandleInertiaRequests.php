@@ -2,7 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Notification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -39,15 +41,35 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user() ? [
                     'id' => $request->user()->id,
-                    'name' => $request->user()->name,
+                    'username' => $request->user()->username,
                     'email' => $request->user()->email,
-                ] : null
+                    'profile_pic' => $request->user()->profile_pic, // Ensure this field is available
+                ] : null,
             ],
+            'notifications' => function () use ($request) {
+                $user = Auth::user();
+
+                if ($user) {
+                    $unreadNotifications = Notification::with('user')
+                        ->where('user_id', $user->id)
+                        ->whereNull('read_at')
+                        ->orderBy('created_at', 'desc')
+                        ->take(3)
+                        ->get();
+
+                    return [
+                        'unreadNotifications' => $unreadNotifications,
+                    ];
+                }
+
+                return []; // Return an empty array if no user is authenticated or no unread notifications exist
+            },
             'flash' => [
                 'message' => fn() => $request->session()->pull('message'),
                 'status' => fn() => $request->session()->pull('status'),
                 'error' => fn() => $request->session()->pull('error'),
-            ]
+            ],
         ]);
+
     }
 }

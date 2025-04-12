@@ -18,44 +18,40 @@ class AuthController extends Controller
 {
     public function showRegister()
     {
-        return Inertia::render('Auth/Register');
+        return Inertia::render('public/auth/Register');
     }
 
     public function register(Request $request)
     {
-        // Validate the input
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|min:4|max:250',
+            'username' => 'required|string|min:4|max:250|unique:users',
             'email' => 'required|string|email|max:255|unique:users|regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
-            'mobile' => 'required|string|min:6|max:20|unique:users|regex:/^\+?[0-9\s\-\(\)]{10,20}$/',
+            'profile_pic' => 'required|image|mimes:jpeg,png,jpg|max:2048',
             'password' => 'required|string|confirmed|min:8|max:50',
         ]);
 
-        // Handle validation failure
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
-        // Create the new user
+        $filePath = null;
+        if ($request->hasFile('profile_pic')) {
+            $image = $request->file('profile_pic');
+
+            $fileName = time() . '.' . $image->getClientOriginalExtension();
+            $filePath = 'uploads/' . $fileName;
+            $image->move(public_path('uploads'), $fileName);
+        }
+
         $user = User::create([
-            'name' => $request->name,
+            'username' => $request->username,
             'email' => $request->email,
-            'mobile' => $request->mobile,
+            'profile_pic' => $filePath,
             'password' => Hash::make($request->password),
         ]);
-
-        // Generate a hashed version of the email
-        $hashedEmail = Hash::make($user->email);
-
-        // Send email verification OTP
-        $this->sendEmailVerificationOtp($user);
-
-        // Set flash message and status for the frontend
-        session()->flash('status', true);
-        session()->flash('message', 'Registration successful. Please check your email for verification code.');
 
         $data = [
             'message' => 'Registration successful. Please check your email for verification code.',
@@ -63,77 +59,63 @@ class AuthController extends Controller
             'error' => ''
         ];
 
-        return redirect()->route('verification.notice', [
-            'email' => $user->email,
-        ])->with($data);
+        return redirect()->route('login')->with($data);
     }
 
 
     public function showLogin()
     {
-        return Inertia::render('Auth/Login');
+        return Inertia::render('public/auth/Login');
     }
 
     public function login(Request $request)
     {
-        $validator = Validator::make($request->all(), [
+        // Validate incoming data
+        $validated = $request->validate([
             'email' => 'required|email|exists:users,email',
             'password' => 'required|string',
         ], [
             'email.exists' => 'The provided email does not exist in our records.',
-            'password.required' => 'The password field is required.'
+            'password.required' => 'The password field is required.',
         ]);
 
-        if ($validator->fails()) {
-            return redirect()
-                ->route('login')
-                ->withErrors($validator)
-                ->withInput($request->except('password'));
-        }
-
-        $credentials = $request->only('email', 'password');
-
-        if (!Auth::attempt($credentials, $request->remember)) {
-            return redirect()
-                ->route('login')
-                ->with('error', 'Invalid credentials. Please try again.')
-                ->withInput($request->only('email'));
+        // Attempt to log the user in with the provided credentials
+        if (!Auth::attempt($validated, $request->filled('remember'))) {
+            return redirect()->route('login')
+                ->withErrors(['email' => 'Invalid credentials. Please try again.'])
+                ->withInput($request->only('email'));  // Only persist the email on error
         }
 
         $user = Auth::user();
 
-        if (!$user->hasVerifiedEmail()) {
-            Auth::logout();
-
-            return redirect()
-                ->route('login')
-                ->with('error', 'Please verify your email address before logging in.')
-                ->withInput($request->only('email'));
-        }
-
         try {
+            // Generate JWT token for the authenticated user
             $token = JWTToken::createToken($user->email, $user->id);
 
-            $request->session()->put([
+            // Store the token and user ID in the session
+            session([
                 'jwt_token' => $token,
                 'user_id' => $user->id,
             ]);
 
+            // Regenerate the session ID for security
             $request->session()->regenerate();
 
-            return redirect()
-                ->route('dashboard')
+            // Redirect the user to the dashboard with a success message
+            return redirect()->route('dashboard.index')
                 ->with('success', 'Welcome back, ' . $user->name . '!');
 
         } catch (\Exception $e) {
+            // Log the user out in case of any exception
             Auth::logout();
 
-            return redirect()
-                ->route('login')
-                ->with('error', 'An error occurred during login. Please try again.')
+            // Handle the exception and show a generic error message
+            return redirect()->route('login')
+                ->withErrors(['email' => 'An error occurred during login. Please try again.'])
                 ->withInput($request->only('email'));
         }
     }
+
 
     public function logout(Request $request)
     {
@@ -144,6 +126,7 @@ class AuthController extends Controller
 
         return redirect()->route('login')->with('success', 'You have been logged out.');
     }
+
 
     public function showVerifyEmail(Request $request)
     {

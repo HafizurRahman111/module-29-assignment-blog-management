@@ -15,10 +15,9 @@
                 <SidebarLink href="/dashboard" icon="house-door" label="Dashboard" :collapsed="collapsed" />
                 <SidebarLink href="/users" icon="people" label="Users" :collapsed="collapsed" />
                 <SidebarLink href="/posts" icon="file-earmark-text" label="Posts" :collapsed="collapsed" />
-                <SidebarLink href="/dashboard/tags" icon="tags" label="Tags" :collapsed="collapsed" />
-                <SidebarLink href="/dashboard/comments" icon="chat-dots" label="Comments" :collapsed="collapsed" />
-                <SidebarLink href="/dashboard/bookmarks" icon="bookmark-star" label="Bookmarks"
-                    :collapsed="collapsed" />
+                <SidebarLink href="/tags" icon="tags" label="Tags" :collapsed="collapsed" />
+                <SidebarLink href="/bookmarks" icon="bookmark-star" label="Bookmarks" :collapsed="collapsed" />
+                <SidebarLink href="/notifications" icon="bell" label="Notifications" :collapsed="collapsed" />
             </nav>
         </div>
 

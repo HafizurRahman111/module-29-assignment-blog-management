@@ -1,208 +1,177 @@
 <template>
     <DashboardLayout title="Post Management">
-        <div class="post-management-container">
-            <DataTable title="Post List" icon="fas fa-newspaper" :items="posts" :headers="headers" :searchable="true"
-                :loading="loading" :delete-action="askDelete" search-placeholder="Search ..."
-                :search-fields="['title', 'content']" @search="handleSearch">
-                <!-- Profile Picture Slot -->
-                <template #item-profile_pic="{ profile_pic }">
-                    <div class="profile-picture-container">
-                        <img v-if="profile_pic" :src="profile_pic" alt="Post image" class="profile-picture"
-                            loading="lazy" />
-                        <div v-else class="profile-picture-placeholder">
-                            <i class="fas fa-image"></i>
-                        </div>
-                    </div>
-                </template>
+        <div class="container py-4">
+            <!-- Header Section -->
+            <div class="row align-items-center mb-4">
+                <div class="col-md-5">
+                    <h1 class="h4 fw-bold mb-0">
+                        <i class="fas fa-newspaper me-2 text-primary"></i>
+                        Post Management
+                    </h1>
+                </div>
 
-                <!-- Visibility Badge Slot -->
-                <template #item-visibility="{ visibility }">
-                    <span :class="`badge ${visibility === 'public' ? 'badge-success' : 'badge-danger'}`">
-                        {{ visibility === 'public' ? 'Public' : 'Private' }}
-                    </span>
-                </template>
-
-                <!-- Custom Empty State -->
-                <template #empty-state>
-                    <div class="empty-state-content">
-                        <i class="fas fa-newspaper-slash empty-state-icon"></i>
-                        <h5 class="empty-state-title">No posts found</h5>
-                        <p v-if="searchQuery" class="empty-state-hint">Try a different search term</p>
-                        <router-link v-if="canCreatePosts" to="/posts/create"
-                            class="btn btn-primary empty-state-button">
-                            <i class="fas fa-plus me-2"></i>Create New Post
-                        </router-link>
+                <div class="col-md-4 mt-3 mt-md-0">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" class="form-control border-start-0" placeholder="Search posts..."
+                            v-model="searchQuery" @input="handleSearch" />
                     </div>
-                </template>
-            </DataTable>
+                </div>
+
+                <div class="col-md-3 text-md-end mt-3 mt-md-0">
+                    <router-link v-if="canCreatePosts" to="/posts/create" class="btn btn-primary w-100 w-md-auto">
+                        <i class="fas fa-plus me-2"></i>Create New Post
+                    </router-link>
+                </div>
+            </div>
+
+            <!-- Posts Grid (3 per row) -->
+            <div v-if="!loading && paginatedPosts.length > 0" class="row g-4">
+                <div v-for="post in paginatedPosts" :key="post.id" class="col-sm-6 col-md-4">
+                    <DashboardPostCard :post="post" @view="() => $router.push(viewPostRoute(post.id))"
+                        @edit="() => $router.push(editPostRoute(post.id))" @delete="askDelete(post)" />
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            <div v-if="filteredPosts.length > perPage" class="d-flex justify-content-center mt-4">
+                <nav>
+                    <ul class="pagination">
+                        <li v-for="page in totalPages" :key="page" class="page-item"
+                            :class="{ active: page === currentPage }">
+                            <button class="page-link" @click="changePage(page)">
+                                {{ page }}
+                            </button>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+
+            <!-- Empty State -->
+            <div v-if="!loading && filteredPosts.length === 0" class="text-center py-5">
+                <div class="empty-state-content">
+                    <i class="fas fa-newspaper-slash fa-4x text-muted mb-4"></i>
+                    <h5 class="empty-state-title">No posts found</h5>
+                    <p v-if="searchQuery" class="text-muted">Try adjusting your search query</p>
+                    <router-link v-if="canCreatePosts" to="/posts/create" class="btn btn-primary mt-3">
+                        <i class="fas fa-plus me-2"></i>Create New Post
+                    </router-link>
+                </div>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div v-if="loading" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
 
             <!-- Delete Confirmation Modal -->
-            <ConfirmDeleteModal :visible="showDeleteModal" :username="selectedPost?.title || 'Unknown'"
-                :userId="selectedPost?.id || 'N/A'" @confirm="confirmDelete" @cancel="showDeleteModal = false" />
+            <ConfirmDeleteModal :show="showDeleteModal" :item-name="selectedPost?.title || 'this post'"
+                @confirm="confirmDelete" @close="closeDeleteModal" />
         </div>
     </DashboardLayout>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { usePage } from '@inertiajs/vue3';
-import axios from 'axios';
-import { createToaster } from '@meforma/vue-toaster';
+import { ref, computed, onMounted } from 'vue'
+import { usePage } from '@inertiajs/vue3'
+import axios from 'axios'
+import { createToaster } from '@meforma/vue-toaster'
+import DashboardLayout from '@/Layouts/DashboardLayout.vue'
+import DashboardPostCard from '@/Components/app/dashboard/DashboardPostCard.vue'
+import ConfirmDeleteModal from '@/Components/ui/modals/ConfirmDeleteModal.vue'
 
-// Components
-import DashboardLayout from '@/Layouts/DashboardLayout.vue';
-import DataTable from '@/Components/ui/data/DataTable/DataTable.vue';
-import ConfirmDeleteModal from '@/Components/ui/modals/ConfirmDeleteModal.vue';
+const toaster = createToaster({ position: 'top-right', duration: 3000 })
+const { props: pageProps } = usePage()
 
-// Toaster config
-const toaster = createToaster({
-    position: 'top-right',
-    duration: 3000,
-    maxToasts: 3
-});
+const posts = ref(pageProps.posts || [])
+const searchQuery = ref('')
+const loading = ref(false)
+const showDeleteModal = ref(false)
+const selectedPost = ref(null)
 
-// Initial props from server
-const { props: pageProps } = usePage();
-const posts = ref(pageProps.posts || []);
-const searchQuery = ref('');
-const loading = ref(false);
-const error = ref(null);
+const currentPage = ref(1)
+const perPage = 6
 
-// Modal + selected post
-const showDeleteModal = ref(false);
-const selectedPost = ref(null);
+const canCreatePosts = computed(() => true)
 
-// Permissions
-const canCreatePosts = computed(() => true);
+const filteredPosts = computed(() => {
+    const query = searchQuery.value.toLowerCase().trim()
+    if (!query) return posts.value
 
-// Table headers
-const headers = [
-    { text: 'Title', value: 'title', sortable: true, searchable: true },
-    { text: 'Content', value: 'content', sortable: true, searchable: true },
-    { text: 'Image', value: 'image', sortable: false, searchable: false, align: 'center', width: '100px' },
-    { text: 'Visibility', value: 'visibility', sortable: true, searchable: true },
-    { text: 'Actions', value: 'actions', sortable: false, align: 'center', width: '200px' }
-];
+    return posts.value.filter(post =>
+        post.title.toLowerCase().includes(query) ||
+        post.content.toLowerCase().includes(query) ||
+        post.tags?.some(tag => tag.name.toLowerCase().includes(query))
+    )
+})
 
-// Handle search input
-const handleSearch = (query) => {
-    searchQuery.value = query;
-};
+const paginatedPosts = computed(() => {
+    const start = (currentPage.value - 1) * perPage
+    return filteredPosts.value.slice(start, start + perPage)
+})
 
-// Trigger delete modal
+const totalPages = computed(() => Math.ceil(filteredPosts.value.length / perPage))
+
+const changePage = (page) => {
+    currentPage.value = page
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+const handleSearch = () => {
+    currentPage.value = 1
+}
+
 const askDelete = (post) => {
-    console.log('Deleting post:', post);
-    selectedPost.value = post;
-    showDeleteModal.value = true;
-};
+    selectedPost.value = post
+    showDeleteModal.value = true
+}
 
-// Delete confirmed
+const closeDeleteModal = () => {
+    showDeleteModal.value = false
+    selectedPost.value = null
+}
+
 const confirmDelete = async () => {
-    if (!selectedPost.value) return;
-
-    showDeleteModal.value = false;
-    loading.value = true;
-
+    if (!selectedPost.value) return
     try {
-        // Make sure you have the correct API endpoint for posts
-        await axios.delete(`/posts/${selectedPost.value.id}`);
-        // Filter out the deleted post from the local posts array
-        posts.value = posts.value.filter(p => p.id !== selectedPost.value.id);
-        toaster.success('Post deleted successfully');
+        loading.value = true
+        await axios.delete(`/posts/${selectedPost.value.id}`)
+        posts.value = posts.value.filter(p => p.id !== selectedPost.value.id)
+        toaster.success('Post deleted successfully')
     } catch (err) {
-        console.error('Delete error:', err);
-        error.value = err;
-        toaster.error(err.response?.data?.message || 'Failed to delete post');
+        toaster.error(err.response?.data?.message || 'Failed to delete post')
     } finally {
-        loading.value = false;
-        selectedPost.value = null;
+        loading.value = false
+        closeDeleteModal()
     }
-};
+}
 
-// Optional: refetch if page initially empty
 const fetchPosts = async () => {
-    if (posts.value.length > 0) return;
-
+    if (posts.value.length) return
     try {
-        loading.value = true;
-        const response = await axios.get('/posts');
-        posts.value = response.data;
-    } catch (err) {
-        console.error('Fetch error:', err);
-        error.value = err;
-        toaster.error('Failed to load posts');
+        loading.value = true
+        const { data } = await axios.get('/posts')
+        posts.value = data
+    } catch {
+        toaster.error('Failed to load posts')
     } finally {
-        loading.value = false;
+        loading.value = false
     }
-};
+}
 
-onMounted(fetchPosts);
+const viewPostRoute = (id) => `/posts/${id}`
+const editPostRoute = (id) => `/posts/${id}/edit`
+
+onMounted(fetchPosts)
 </script>
 
-
 <style scoped>
-.profile-picture-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.profile-picture {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    object-fit: cover;
-}
-
-.profile-picture-placeholder {
-    width: 36px;
-    height: 36px;
-    font-size: 1.8rem;
-    color: #ccc;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
 .empty-state-content {
-    text-align: center;
-    padding: 2rem;
-}
-
-.empty-state-icon {
-    font-size: 3rem;
-    color: #aaa;
-}
-
-.empty-state-title {
-    margin-top: 1rem;
-    font-weight: bold;
-}
-
-.empty-state-hint {
-    color: #666;
-}
-
-.empty-state-button {
-    margin-top: 1.5rem;
-}
-
-.badge {
-    padding: 5px 10px;
-    font-size: 14px;
-    border-radius: 20px;
-    text-transform: capitalize;
-}
-
-.badge-success {
-    background-color: #28a745;
-    /* Green */
-    color: white;
-}
-
-.badge-danger {
-    background-color: #dc3545;
-    /* Red */
-    color: white;
+    max-width: 500px;
+    margin: 0 auto;
 }
 </style>

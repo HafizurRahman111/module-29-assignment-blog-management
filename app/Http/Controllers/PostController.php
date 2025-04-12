@@ -14,7 +14,12 @@ class PostController extends Controller
      */
     public function index(Request $request)
     {
-        $posts = Post::all();
+        $posts = Post::with(['user', 'tags'])
+            ->withCount(['comments', 'likes', 'bookmarks'])
+            ->latest()
+            ->get();
+
+        // dd($posts);
 
         return Inertia::render('app/management/posts/PostList', [
             'posts' => $posts,
@@ -42,8 +47,21 @@ class PostController extends Controller
      */
     public function show(Post $post)
     {
-        //
+        // Eager load the relationships
+        $post->load([
+            'user:id,username',
+            'tags:id,name',
+            'comments' => function ($query) {
+                $query->with(['user:id,username', 'replies.user:id,username']);
+            }
+        ]);
+
+        return Inertia::render('app/management/posts/ViewPost', [
+            'post' => $post,
+        ]);
     }
+
+
 
     /**
      * Show the form for editing the specified resource.
