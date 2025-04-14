@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Post;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -20,6 +21,16 @@ class SiteController extends Controller
 
     public function blog()
     {
-        return Inertia::render('public/Blog');
+        $posts = Post::with(['user', 'tags'])
+            ->where('visibility', 'public')
+            ->withCount(['comments', 'likes', 'bookmarks'])
+            ->latest()
+            ->get();
+
+        // dd($posts);
+        return Inertia::render('public/Blog', [
+            'posts' => $posts,
+        ]);
     }
+
 }

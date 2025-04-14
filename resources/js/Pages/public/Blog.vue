@@ -12,10 +12,9 @@
                 <div v-for="(post, index) in displayedPosts" :key="post.id" class="col-lg-4 col-md-6"
                     :style="`--stagger-delay: ${index * 0.1}s`">
                     <div class="card h-100 shadow-lg blog-card" @click="viewPost(post.id)">
-                        <!-- Featured Image with Hover Effect -->
                         <div class="card-img-container">
                             <img :src="post.image" :alt="post.title" class="card-img-top img-fluid rounded-top-3"
-                                loading="lazy">
+                                loading="lazy" />
                             <div class="card-img-overlay d-flex align-items-end">
                                 <div class="badge bg-primary bg-opacity-75 mb-2">
                                     {{ post.visibility === 'public' ? 'Public' : 'Private' }}
@@ -24,18 +23,15 @@
                         </div>
 
                         <div class="card-body d-flex flex-column">
-                            <!-- Title with Read More Indicator -->
                             <h3 class="card-title fw-bold mb-3 text-dark">
                                 {{ post.title }}
                                 <i class="bi bi-arrow-right-circle-fill ms-2 text-primary"></i>
                             </h3>
 
-                            <!-- Excerpt with Gradient Fade -->
                             <div class="excerpt-container mb-3">
                                 <p class="card-text text-muted mb-0">{{ post.excerpt }}</p>
                             </div>
 
-                            <!-- Tags -->
                             <div class="tag-cloud mb-3">
                                 <span v-for="tag in post.tags" :key="tag.id"
                                     class="badge bg-light text-dark me-1 mb-1 border">
@@ -43,15 +39,12 @@
                                 </span>
                             </div>
 
-                            <!-- Footer with Actions -->
                             <div class="mt-auto d-flex justify-content-between align-items-center">
-                                <!-- Date -->
                                 <small class="text-muted">
                                     <i class="bi bi-calendar me-1"></i>
                                     {{ formatDate(post.created_at) }}
                                 </small>
 
-                                <!-- Action Buttons -->
                                 <div class="action-buttons">
                                     <button v-if="isUser" @click.stop="toggleLike(post.id)"
                                         class="btn btn-sm btn-link text-decoration-none"
@@ -92,106 +85,74 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { usePage } from '@inertiajs/vue3'
+import { ref, onMounted, onUnmounted } from 'vue'
 import Layout from '../../Layouts/AppLayout.vue'
 
-const isUser = true // Simulate user logged in
+const isUser = true // Simulated user login
+const { posts: rawPosts } = usePage().props
 
-const posts = ref([
-    {
-        id: 1,
-        user_id: 10,
-        title: 'Vue 3 + Laravel: A Powerful Duo for Modern Web Apps',
-        content: 'This post explains how Vue 3 and Laravel can work together to create powerful, reactive web applications with a robust backend. We explore the best practices for integrating these technologies.',
-        image: 'https://source.unsplash.com/random/600x400/?web-development',
-        visibility: 'public',
-        created_at: '2025-04-11',
-        updated_at: '2025-04-11',
-        tags: [
-            { id: 1, name: 'Vue' },
-            { id: 2, name: 'Laravel' },
-            { id: 3, name: 'Frontend' }
-        ],
-        liked: false,
-        bookmarked: false,
-        likes_count: 5
-    },
-    {
-        id: 2,
-        user_id: 11,
-        title: 'Database Design Best Practices for Scalable Applications',
-        content: 'Learn how to structure your relational databases for optimal performance and scalability. We cover normalization techniques, indexing strategies, and common pitfalls to avoid.',
-        image: 'https://source.unsplash.com/random/600x400/?database',
-        visibility: 'private',
-        created_at: '2025-04-10',
-        updated_at: '2025-04-10',
-        tags: [
-            { id: 4, name: 'Database' },
-            { id: 5, name: 'MySQL' },
-            { id: 6, name: 'Backend' }
-        ],
-        liked: true,
-        bookmarked: true,
-        likes_count: 8
-    },
-    // Add more sample posts as needed
-])
-
-// Computed excerpt for each post
-posts.value = posts.value.map(post => ({
-    ...post,
-    excerpt: post.content.slice(0, 120) + (post.content.length > 120 ? '...' : '')
-}))
-
-const INITIAL_COUNT = 6
-const LOAD_MORE_COUNT = 3
+// Format and enhance posts with excerpts
+const posts = ref(
+    rawPosts.map((post) => ({
+        ...post,
+        excerpt: post.content.length > 120 ? post.content.slice(0, 120) + '...' : post.content,
+        liked: post.liked ?? false,
+        bookmarked: post.bookmarked ?? false,
+    }))
+)
 
 const displayedPosts = ref([])
 const showScrollTop = ref(false)
 
+const INITIAL_COUNT = 6
+const LOAD_MORE_COUNT = 3
+
+// Load more posts on demand or scroll
 const loadMorePosts = () => {
-    const nextPosts = posts.value.slice(
-        displayedPosts.value.length,
-        displayedPosts.value.length + LOAD_MORE_COUNT
-    )
+    const start = displayedPosts.value.length
+    const nextPosts = posts.value.slice(start, start + LOAD_MORE_COUNT)
     displayedPosts.value.push(...nextPosts)
 }
 
 const handleScroll = () => {
     showScrollTop.value = window.scrollY > 200
-    // Auto-load more when near bottom (optional)
-    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500) {
-        loadMorePosts()
-    }
+    const nearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 300
+    if (nearBottom) loadMorePosts()
 }
 
 const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
+// Like post
 const toggleLike = (postId) => {
-    const post = posts.value.find(p => p.id === postId)
+    const post = posts.value.find((p) => p.id === postId)
     if (post) {
         post.liked = !post.liked
         post.likes_count += post.liked ? 1 : -1
     }
 }
 
+// Bookmark post
 const toggleBookmark = (postId) => {
-    const post = posts.value.find(p => p.id === postId)
-    if (post) {
-        post.bookmarked = !post.bookmarked
-    }
+    const post = posts.value.find((p) => p.id === postId)
+    if (post) post.bookmarked = !post.bookmarked
 }
 
+// View post action
 const viewPost = (postId) => {
-    console.log('Navigate to post detail:', postId)
-    // router.push(`/posts/${postId}`) // If using Vue Router
+    // Replace with router push if using Vue Router
+    console.log('Navigate to post:', postId)
 }
 
+// Format date nicely
 const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'short', day: 'numeric' }
-    return new Date(dateString).toLocaleDateString(undefined, options)
+    return new Date(dateString).toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+    })
 }
 
 onMounted(() => {
@@ -205,21 +166,19 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Gradient Text */
 .text-gradient {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #667eea, #764ba2);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
 }
 
-/* Card Styles */
 .blog-card {
     transition: all 0.3s ease;
     border: none;
     border-radius: 12px;
     overflow: hidden;
-    background-color: #ffffff;
+    background-color: #fff;
     cursor: pointer;
 }
 
@@ -246,11 +205,10 @@ onUnmounted(() => {
 }
 
 .card-img-overlay {
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, transparent 100%);
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
     padding: 1rem;
 }
 
-/* Excerpt with fade effect */
 .excerpt-container {
     position: relative;
     max-height: 3.6em;
@@ -267,13 +225,11 @@ onUnmounted(() => {
     background: linear-gradient(to bottom, transparent, white);
 }
 
-/* Tag Cloud */
 .tag-cloud {
     display: flex;
     flex-wrap: wrap;
 }
 
-/* Scroll to Top Button */
 .scroll-top {
     position: fixed;
     bottom: 30px;
@@ -294,7 +250,7 @@ onUnmounted(() => {
     transform: translateY(-3px);
 }
 
-/* Staggered Animation */
+/* Animations */
 .staggered-fade-move,
 .staggered-fade-enter-active,
 .staggered-fade-leave-active {

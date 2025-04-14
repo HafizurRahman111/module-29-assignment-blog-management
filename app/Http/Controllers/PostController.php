@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Post;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class PostController extends Controller
@@ -14,17 +15,30 @@ class PostController extends Controller
      */
     public function index(Request $request)
     {
+        $userId = Auth::id();
+
         $posts = Post::with(['user', 'tags'])
             ->withCount(['comments', 'likes', 'bookmarks'])
+            ->where(function ($query) use ($userId) {
+                $query->where('visibility', 'public')
+                      ->orWhere(function ($q) use ($userId) {
+                          $q->where('visibility', 'private')
+                            ->where('user_id', $userId);
+                      });
+            })
             ->latest()
             ->get();
-
-        // dd($posts);
-
+    
         return Inertia::render('app/management/posts/PostList', [
             'posts' => $posts,
         ]);
+
     }
+
+
+
+
+
 
     /**
      * Show the form for creating a new resource.
