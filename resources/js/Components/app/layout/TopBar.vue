@@ -61,8 +61,8 @@
             <!-- User Profile Dropdown -->
             <div class="user-profile d-flex align-items-center">
                 <div class="d-flex align-items-center me-3">
-                    <img :src="user.profile_pic ?? 'https://via.placeholder.com/40'" alt="User Avatar"
-                        class="user-avatar rounded-circle me-2" />
+                    <img :src="user.profile_pic ? `/${user.profile_pic}` : `https://api.dicebear.com/7.x/initials/svg?seed=${user.username}`"
+                        alt="User Avatar" class="user-avatar rounded-circle me-2" />
 
                     <div class="user-info">
                         <span v-if="user" class="fw-semibold">{{ user.username }}</span>

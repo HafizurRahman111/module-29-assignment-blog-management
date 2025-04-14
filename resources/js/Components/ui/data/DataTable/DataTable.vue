@@ -10,10 +10,10 @@
             <template #header-right>
                 <!-- Conditional Add Button -->
                 <template v-if="hasCreationOption">
-                    <button v-if="addRoute" class="btn btn-primary" @click="navigateToAdd">
-                        <i class="fas fa-plus me-2"></i>
-                        {{ addButtonText }}
-                    </button>
+                    <Link v-if="addRoute" :href="addRoute" class="btn btn-primary" preserve-scroll preserve-state>
+                    <i class="fas fa-plus me-2"></i>
+                    {{ addButtonText }}
+                    </Link>
 
                     <button v-else-if="showAddModal" class="btn btn-success" @click="openAddModal">
                         <i class="fas fa-plus me-2"></i>
@@ -92,6 +92,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue';
+import { Link } from '@inertiajs/vue3'
 import { useRouter } from 'vue-router';
 import { debounce } from 'lodash-es';
 import DataTableHeader from './DataTableHeader.vue';
@@ -203,10 +204,19 @@ const handleDelete = (id) => {
 };
 
 const navigateToAdd = () => {
-    if (typeof props.addRoute === 'string') {
-        router.push(props.addRoute);
+    if (props.addRoute) {
+        router.visit(props.addRoute, {
+            preserveState: true,
+            preserveScroll: true,
+            onError: (errors) => {
+                console.error('Navigation error:', errors);
+            }
+        });
+    } else {
+        console.warn('No addRoute provided.');
     }
 };
+
 
 const openAddModal = () => {
     isAddModalOpen.value = true;

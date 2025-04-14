@@ -18,20 +18,14 @@ class DatabaseSeeder extends Seeder
             'username' => 'testuser',
             'email' => 'test@example.com',
             'password' => Hash::make('pass1234'),
-            'profile_pic' => 'https://dummyimage.com/640x480/' .
-                ltrim(fake()->hexColor, '#') . '/' .
-                ltrim(fake()->hexColor, '#') .
-                '&text=' . urlencode('testuser'),
+            'profile_pic' => 'default/default-user-photo.png',
         ]);
 
         User::factory()->create([
             'username' => 'testuser2',
             'email' => 'test2@example.com',
             'password' => Hash::make('pass1234'),
-            'profile_pic' => 'https://dummyimage.com/640x480/' .
-                ltrim(fake()->hexColor, '#') . '/' .
-                ltrim(fake()->hexColor, '#') .
-                '&text=' . urlencode('testuser2'),
+            'profile_pic' => 'default/default-user-photo.png',
         ]);
 
         User::factory(count: 10)->create();
