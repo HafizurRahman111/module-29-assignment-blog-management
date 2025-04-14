@@ -63,10 +63,9 @@
                     </span>
 
                     <!-- View, Edit, Delete -->
-                    <router-link :to="`/posts/view/${post.id}`" class="btn btn-sm btn-outline-primary me-1"
-                        title="View">
-                        <i class="far fa-eye"></i>
-                    </router-link>
+                    <Link :href="`/posts/${post.id}`" class="btn btn-sm btn-outline-primary me-1" title="View">
+                    <i class="far fa-eye"></i>
+                    </Link>
                     <router-link :to="`/posts/edit/${post.id}`" class="btn btn-sm btn-outline-secondary me-1"
                         title="Edit">
                         <i class="far fa-edit"></i>
@@ -81,6 +80,8 @@
 </template>
 
 <script setup>
+import { Link } from '@inertiajs/vue3'
+
 defineProps(['post'])
 defineEmits(['delete'])
 

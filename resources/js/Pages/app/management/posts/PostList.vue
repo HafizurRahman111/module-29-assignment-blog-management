@@ -21,9 +21,9 @@
                 </div>
 
                 <div class="col-md-3 text-md-end mt-3 mt-md-0">
-                    <router-link v-if="canCreatePosts" to="/posts/create" class="btn btn-primary w-100 w-md-auto">
-                        <i class="fas fa-plus me-2"></i>Create New Post
-                    </router-link>
+                    <Link v-if="canCreatePosts" href="/posts/create" class="btn btn-primary w-100 w-md-auto">
+                    <i class="fas fa-plus me-2"></i>Create New Post
+                    </Link>
                 </div>
             </div>
 
@@ -77,7 +77,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { usePage } from '@inertiajs/vue3'
+import { usePage, Link } from '@inertiajs/vue3'
 import axios from 'axios'
 import { createToaster } from '@meforma/vue-toaster'
 import DashboardLayout from '@/Layouts/DashboardLayout.vue'
